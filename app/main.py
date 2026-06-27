@@ -15,7 +15,9 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 
+from app import config
 from app.database import get_connection, init_db
 from app.scraper import asura  # noqa: F401  (importing registers the scraper)
 from app.scraper.base import get_scraper_by_name, get_scraper_for_url
@@ -25,14 +27,71 @@ app = FastAPI(title="Manga Tracker")
 templates = Jinja2Templates(directory="app/templates")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+# Paths that don't require being logged in.
+PUBLIC_PATHS = {"/login"}
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    """Block every page behind the login, except the login page and static files.
+
+    Because the browser sends our session cookie with every request (including
+    the <img> proxy requests), once you're logged in everything just works.
+    """
+    path = request.url.path
+    if (
+        path in PUBLIC_PATHS
+        or path.startswith("/static")
+        or request.session.get("authed")
+    ):
+        return await call_next(request)
+    return RedirectResponse(url="/login", status_code=303)
+
+
+# SessionMiddleware is added last so it runs first — that way request.session
+# already exists when require_login (above) checks it.
+app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
+
 
 @app.on_event("startup")
 def _startup() -> None:
+    config.require_password()  # fail fast if no password is configured
     init_db()
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+# ---------------------------------------------------------------------------
+# Login / logout
+# ---------------------------------------------------------------------------
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    # Already logged in? Go home.
+    if request.session.get("authed"):
+        return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        "login.html", {"request": request, "error": None}
+    )
+
+
+@app.post("/login")
+def login_submit(request: Request, password: str = Form(...)):
+    if password == config.APP_PASSWORD:
+        request.session["authed"] = True
+        return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "error": "Incorrect password."},
+        status_code=401,
+    )
+
+
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=303)
 
 
 # ---------------------------------------------------------------------------

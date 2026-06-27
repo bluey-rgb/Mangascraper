@@ -4,10 +4,8 @@ We use Python's built-in `sqlite3` module so there is nothing extra to install.
 The whole database lives in a single file: data/manga.db
 """
 import sqlite3
-from pathlib import Path
 
-# Path to the database file (created automatically on first run).
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "manga.db"
+from app.config import DB_PATH  # path to the database file (set via env, has a default)
 
 
 def get_connection() -> sqlite3.Connection:

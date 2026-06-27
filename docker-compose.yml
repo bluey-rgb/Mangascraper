@@ -1,0 +1,15 @@
+services:
+  manga-tracker:
+    build: .
+    container_name: manga-tracker
+    ports:
+      # Host port 8000 -> container port 8000. Visit http://<this-machine-ip>:8000
+      - "8000:8000"
+    env_file:
+      # Reads APP_PASSWORD and SECRET_KEY from your .env file (see .env.example)
+      - .env
+    volumes:
+      # Keeps your library (the SQLite database) on the host so it survives
+      # container rebuilds and restarts.
+      - ./data:/app/data
+    restart: unless-stopped

@@ -27,8 +27,26 @@ a { color: inherit; text-decoration: none; }
     position: sticky;
     top: 0;
     z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 .brand { font-weight: 700; font-size: 1.1rem; }
+.logout { color: var(--muted); font-size: 0.85rem; }
+.logout:hover { color: var(--text); }
+
+/* --- Login page --- */
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.login-box {
+    background: var(--panel); padding: 32px; border-radius: 14px;
+    width: 320px; display: flex; flex-direction: column; gap: 12px;
+}
+.login-box h1 { margin: 0; font-size: 1.3rem; }
+.login-box input {
+    padding: 12px 14px; border-radius: 8px;
+    border: 1px solid #353945; background: var(--panel-2); color: var(--text);
+}
+.login-error { color: var(--danger); margin: 0; font-size: 0.9rem; }
 
 .container { max-width: 1000px; margin: 0 auto; padding: 24px 20px 60px; }
 

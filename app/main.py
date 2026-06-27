@@ -352,6 +352,25 @@ def continue_series(series_id: int):
     return RedirectResponse(url=f"/series/{series_id}", status_code=303)
 
 
+@app.get("/series/{series_id}/first")
+def first_chapter(series_id: int):
+    """Jump to the very first chapter (lowest number) — start from the beginning."""
+    conn = get_connection()
+    row = conn.execute(
+        """
+        SELECT id FROM chapters
+         WHERE series_id = ?
+         ORDER BY CAST(number AS REAL) ASC, id ASC
+         LIMIT 1
+        """,
+        (series_id,),
+    ).fetchone()
+    conn.close()
+    if row:
+        return RedirectResponse(url=f"/read/{row['id']}", status_code=303)
+    return RedirectResponse(url=f"/series/{series_id}", status_code=303)
+
+
 @app.post("/series/{series_id}/delete")
 def delete_series(series_id: int):
     """Stop tracking a series (also removes its chapters)."""

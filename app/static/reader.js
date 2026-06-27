@@ -6,6 +6,8 @@
 
   var reader = document.getElementById("reader");
   var nextUrl = reader ? reader.getAttribute("data-next-url") : "";
+  var nextId = reader ? reader.getAttribute("data-next-id") : "";
+  var PREFETCH_PAGES = 4; // how many of the next chapter's pages to warm
   // Grab the actual prev/next links (anchors only, not disabled spans).
   var links = Array.prototype.slice.call(
     document.querySelectorAll(".reader-nav.top a.nav-btn")
@@ -98,5 +100,25 @@
         window.location.href = nextUrl;
       }
     }, { passive: true });
+  }
+
+  // ----- Prefetch next chapter ------------------------------------------
+  // Ask the server for the next chapter's page list (this also warms the
+  // server-side cache so navigation won't re-scrape), then load the first few
+  // images into the browser cache. When the reader navigates to that chapter
+  // the pages are already there, so the transition is instant.
+  if (nextId) {
+    // Wait a moment so the current chapter's images load first.
+    setTimeout(function () {
+      fetch("/chapter/" + nextId + "/pages", { credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : { pages: [] }; })
+        .then(function (data) {
+          (data.pages || []).slice(0, PREFETCH_PAGES).forEach(function (url) {
+            var img = new Image();
+            img.src = url; // fetched and cached, not added to the DOM
+          });
+        })
+        .catch(function () { /* prefetch is best-effort; ignore errors */ });
+    }, 1500);
   }
 })();

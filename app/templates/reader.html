@@ -38,9 +38,10 @@
 </div>
 
 {% if pages %}
-<div class="reader" id="reader" data-next-url="{{ next_url }}">
+<div class="reader" id="reader" data-next-url="{{ next_url }}"
+     data-next-id="{{ next_chapter.id if next_chapter else '' }}">
     {% for page in pages %}
-    <img src="/img?url={{ page | urlencode }}" alt="page {{ loop.index }}" loading="lazy">
+    <img src="{{ page }}" alt="page {{ loop.index }}" loading="lazy">
     {% endfor %}
 </div>
 {% else %}
@@ -55,5 +56,5 @@
     {% else %}<span class="nav-btn disabled">Next →</span>{% endif %}
 </div>
 
-<script src="/static/reader.js?v=2"></script>
+<script src="/static/reader.js?v=3"></script>
 {% endblock %}

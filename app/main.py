@@ -9,8 +9,9 @@ Everything is in this one file so it's easy to follow as a first project:
   - routes that do things (POST /series, /series/{id}/refresh)
   - the image proxy (GET /img) that makes chapter images display
 """
+import time
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -68,6 +69,35 @@ def _startup() -> None:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+# Short-lived cache of scraped chapter page lists, keyed by chapter URL. This
+# lets prefetching warm the list so the actual navigation doesn't re-scrape,
+# making chapter transitions feel instant.
+_PAGES_TTL = 600  # seconds
+_pages_cache: dict = {}
+
+
+def _chapter_pages(source: str, chapter_url: str) -> list:
+    """Return a chapter's page image URLs, using the cache when it's fresh."""
+    now = time.time()
+    hit = _pages_cache.get(chapter_url)
+    if hit and hit[0] > now:
+        return hit[1]
+    pages = get_scraper_by_name(source).get_chapter_pages(chapter_url)
+    if len(_pages_cache) > 200:  # keep the cache from growing without bound
+        _pages_cache.clear()
+    _pages_cache[chapter_url] = (now + _PAGES_TTL, pages)
+    return pages
+
+
+def _proxied(page_url: str) -> str:
+    """Build the in-app image-proxy URL for a remote page image.
+
+    Used for both the reader's <img> tags and the prefetch endpoint so the URLs
+    are byte-identical — that's what lets the browser reuse the prefetched image
+    from cache on the next chapter."""
+    return "/img?url=" + quote(page_url, safe="")
 
 
 # ---------------------------------------------------------------------------
@@ -183,8 +213,7 @@ def read_chapter(request: Request, chapter_id: int):
         "SELECT * FROM series WHERE id = ?", (chapter["series_id"],)
     ).fetchone()
 
-    scraper = get_scraper_by_name(series["source"])
-    pages = scraper.get_chapter_pages(chapter["url"])
+    pages = [_proxied(p) for p in _chapter_pages(series["source"], chapter["url"])]
 
     # Find the neighboring chapters in reading order (ascending by number) so the
     # reader can offer Prev/Next. "Next" advances the story (higher number).
@@ -219,6 +248,29 @@ def read_chapter(request: Request, chapter_id: int):
             "next_chapter": next_chapter,
         },
     )
+
+
+@app.get("/chapter/{chapter_id}/pages")
+def chapter_pages_json(chapter_id: int):
+    """Return a chapter's proxied page-image URLs as JSON.
+
+    The reader calls this for the *next* chapter to prefetch its first pages, so
+    moving to the next chapter is instant. It does NOT mark the chapter read and
+    it warms the server-side page cache (see `_chapter_pages`)."""
+    conn = get_connection()
+    chapter = conn.execute(
+        "SELECT * FROM chapters WHERE id = ?", (chapter_id,)
+    ).fetchone()
+    if chapter is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    series = conn.execute(
+        "SELECT source FROM series WHERE id = ?", (chapter["series_id"],)
+    ).fetchone()
+    conn.close()
+
+    pages = [_proxied(p) for p in _chapter_pages(series["source"], chapter["url"])]
+    return {"pages": pages}
 
 
 # ---------------------------------------------------------------------------
@@ -411,4 +463,10 @@ def image_proxy(url: str):
         "png": "image/png",
         "gif": "image/gif",
     }.get(ext, "image/webp")
-    return Response(content=data, media_type=content_type)
+    # Cache in the browser: page images never change, and this is what makes the
+    # prefetched next-chapter pages a cache hit (= instant transition).
+    return Response(
+        content=data,
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )

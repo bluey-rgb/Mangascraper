@@ -29,6 +29,8 @@ class Scraper:
     matches: Callable[[str], bool]                 # does this URL belong to me?
     get_series: Callable[[str], SeriesInfo]        # series URL -> SeriesInfo
     get_chapter_pages: Callable[[str], List[str]]  # chapter URL -> image URLs
+    image_hosts: List[str] = field(default_factory=list)  # hostname suffixes its images come from
+    image_referer: str = ""                        # Referer to send when fetching its images
 
 
 _REGISTRY: Dict[str, Scraper] = {}
@@ -36,6 +38,27 @@ _REGISTRY: Dict[str, Scraper] = {}
 
 def register(scraper: Scraper) -> None:
     _REGISTRY[scraper.name] = scraper
+
+
+def all_scrapers() -> List[Scraper]:
+    return list(_REGISTRY.values())
+
+
+def fmt_number(value) -> str:
+    """Normalize a chapter number for display: 311.0 -> "311", 10.5 -> "10.5"."""
+    try:
+        f = float(value)
+        return str(int(f)) if f == int(f) else str(f)
+    except (TypeError, ValueError):
+        return str(value) if value not in (None, "") else "0"
+
+
+def referer_for_image(host: str) -> str:
+    """Return the right Referer for an image host, or '' if no scraper claims it."""
+    for scraper in _REGISTRY.values():
+        if any(host == suffix or host.endswith("." + suffix) for suffix in scraper.image_hosts):
+            return scraper.image_referer
+    return ""
 
 
 def get_scraper_for_url(url: str) -> Scraper:

@@ -116,5 +116,7 @@ register(
         matches=matches,
         get_series=get_series,
         get_chapter_pages=get_chapter_pages,
+        image_hosts=["asurascans.com", "asuracomic.net"],
+        image_referer="https://asurascans.com/",
     )
 )

@@ -1,9 +1,13 @@
 # 📚 Manga Tracker
 
-A small, password-protected website that tracks manga/manhwa series from
-**AsuraScans** so you can see new chapters and read them all in one place — no
-more checking the site manually. Run it on your own machine and reach it from
-your phone, tablet, or laptop.
+A small, password-protected website that tracks manga/manhwa series so you can
+see new chapters and read them all in one place — no more checking each site
+manually. Run it on your own machine and reach it from your phone, tablet, or
+laptop.
+
+**Supported sites:** AsuraScans · Flame Comics · MangaDex · MangaKatana
+(adding more is one small file — see below). Just paste a series URL from any of
+them.
 
 This is a first-project-friendly codebase: one small Python web app, a single
 SQLite file for storage, and plain HTML pages.
@@ -82,9 +86,10 @@ Then open **http://localhost:8000** and log in with that password.
 
 To stop the app, press `Ctrl+C` in the terminal.
 
-> **Tip:** Find a series on https://asurascans.com, open its page, and copy the
-> URL from the address bar (it looks like
-> `https://asurascans.com/comics/<name>-<code>`). Paste that into "Add a series".
+> **Tip:** On any supported site, open a series' page and copy the URL from the
+> address bar, then paste it into "Add a series". Example shapes:
+> `asurascans.com/comics/...`, `flamecomics.xyz/series/...`,
+> `mangadex.org/title/...`, `mangakatana.com/manga/...`.
 
 ---
 
@@ -97,8 +102,11 @@ app/
   database.py        # Sets up the SQLite database
   scraper/
     fetch.py         # Downloads pages while pretending to be Chrome (beats Cloudflare)
-    asura.py         # Reads titles, chapter lists, and page images from AsuraScans
-    base.py          # A shared shape so more sites can be added later
+    base.py          # A shared shape + registry so more sites can be added later
+    asura.py         # AsuraScans   (HTML scraping)
+    flame.py         # Flame Comics (reads embedded JSON)
+    mangadex.py      # MangaDex     (official API)
+    mangakatana.py   # MangaKatana  (HTML + JS image array)
   templates/         # The HTML pages you see (incl. login.html)
   static/style.css   # The styling
 Dockerfile           # How to package the app into a container

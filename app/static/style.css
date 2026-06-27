@@ -59,6 +59,7 @@ h1, h2 { line-height: 1.2; }
 .add-box { background: var(--panel); padding: 18px 20px; border-radius: 12px; margin-bottom: 28px; }
 .add-box h2 { margin: 0 0 12px; font-size: 1rem; }
 .add-form { display: flex; gap: 10px; }
+.supported { margin: 10px 0 0; font-size: 0.78rem; }
 .add-form input {
     flex: 1; padding: 11px 14px; border-radius: 8px;
     border: 1px solid #353945; background: var(--panel-2); color: var(--text);

@@ -34,8 +34,12 @@ def _respect_delay() -> None:
     _last_request_time = time.time()
 
 
-def get(url: str, referer: str = "https://asurascans.com/") -> requests.Response:
-    """Fetch a URL as if we were Chrome. Raises on HTTP errors."""
+def get(url: str, referer: str = "https://asurascans.com/", params: dict = None) -> requests.Response:
+    """Fetch a URL as if we were Chrome. Raises on HTTP errors.
+
+    `params` is an optional dict of query-string parameters (used by API calls
+    such as MangaDex's).
+    """
     _respect_delay()
     headers = {
         "User-Agent": USER_AGENT,
@@ -45,6 +49,7 @@ def get(url: str, referer: str = "https://asurascans.com/") -> requests.Response
     resp = requests.get(
         url,
         headers=headers,
+        params=params,
         impersonate="chrome",  # the key to defeating Cloudflare
         timeout=30,
     )

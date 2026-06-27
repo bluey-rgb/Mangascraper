@@ -10,6 +10,7 @@ Everything is in this one file so it's easy to follow as a first project:
   - the image proxy (GET /img) that makes chapter images display
 """
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -19,8 +20,14 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import config
 from app.database import get_connection, init_db
-from app.scraper import asura  # noqa: F401  (importing registers the scraper)
-from app.scraper.base import get_scraper_by_name, get_scraper_for_url
+
+# Importing each scraper module registers it. Add new sites here.
+from app.scraper import asura, flame, mangadex, mangakatana  # noqa: F401
+from app.scraper.base import (
+    get_scraper_by_name,
+    get_scraper_for_url,
+    referer_for_image,
+)
 from app.scraper.fetch import get_bytes
 
 app = FastAPI(title="Manga Tracker")
@@ -283,12 +290,17 @@ def image_proxy(url: str):
     """Fetch a remote chapter image (with the right Referer) and stream it back.
 
     Browsers load <img src="/img?url=..."> which hits this route, so images
-    display even if the CDN ever starts blocking hotlinked requests.
+    display even if a CDN starts blocking hotlinked requests.
+
+    We only proxy hosts that one of our scrapers recognizes — this stops the
+    endpoint from being used to fetch arbitrary URLs.
     """
-    if "asurascans.com" not in url and "asuracomic.net" not in url:
+    host = urlparse(url).hostname or ""
+    referer = referer_for_image(host)
+    if not referer:
         raise HTTPException(status_code=400, detail="Refusing to proxy that URL")
     try:
-        data = get_bytes(url)
+        data = get_bytes(url, referer=referer)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Image fetch failed: {exc}")
     # Guess the content type from the extension; default to webp (AsuraScans).

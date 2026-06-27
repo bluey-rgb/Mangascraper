@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ series.title }} · Manga Tracker{% endblock %}
+{% block content %}
+
+<a href="/" class="back">← Library</a>
+
+<div class="series-header">
+    {% if series.cover_url %}
+    <img class="series-cover" src="/img?url={{ series.cover_url | urlencode }}" alt="{{ series.title }}">
+    {% endif %}
+    <div class="series-info">
+        <h1>{{ series.title }}</h1>
+        <p class="muted">
+            {{ chapters | length }} chapters ·
+            {% if series.last_checked_at %}last checked {{ series.last_checked_at }}{% else %}never refreshed{% endif %}
+        </p>
+        <div class="series-actions">
+            <form action="/series/{{ series.id }}/refresh" method="post">
+                <button type="submit">🔄 Check for new chapters</button>
+            </form>
+            <form action="/series/{{ series.id }}/delete" method="post"
+                  onsubmit="return confirm('Stop tracking this series?');">
+                <button type="submit" class="danger">Remove</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<ul class="chapter-list">
+    {% for c in chapters %}
+    <li class="chapter-row {% if c.is_read %}read{% endif %}">
+        <a href="/read/{{ c.id }}">{{ c.title }}</a>
+        {% if c.is_new and not c.is_read %}<span class="badge small">NEW</span>{% endif %}
+        {% if c.is_read %}<span class="check">✓</span>{% endif %}
+    </li>
+    {% endfor %}
+</ul>
+
+{% endblock %}

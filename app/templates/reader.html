@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ series.title }} — {{ chapter.title }}{% endblock %}
+{% block content %}
+
+<div class="reader-bar">
+    <a href="/series/{{ series.id }}" class="back">← {{ series.title }}</a>
+    <span class="muted">{{ chapter.title }} · {{ pages | length }} pages</span>
+</div>
+
+{% if pages %}
+<div class="reader">
+    {% for page in pages %}
+    <img src="/img?url={{ page | urlencode }}" alt="page {{ loop.index }}" loading="lazy">
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No pages found for this chapter. The site layout may have changed.</p>
+{% endif %}
+
+<div class="reader-bar">
+    <a href="/series/{{ series.id }}" class="back">← Back to chapter list</a>
+</div>
+
+{% endblock %}

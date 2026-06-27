@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Library · Manga Tracker{% endblock %}
+{% block content %}
+
+<section class="add-box">
+    <h2>Add a series</h2>
+    <form action="/series" method="post" class="add-form">
+        <input type="url" name="url" required
+               placeholder="Paste an AsuraScans series URL, e.g. https://asurascans.com/comics/...">
+        <button type="submit">Add</button>
+    </form>
+</section>
+
+<h2>Your library</h2>
+
+{% if series %}
+<div class="grid">
+    {% for s in series %}
+    <a class="card" href="/series/{{ s.id }}">
+        {% if s.new_count > 0 %}<span class="badge">{{ s.new_count }} NEW</span>{% endif %}
+        {% if s.cover_url %}
+            <img class="cover" src="/img?url={{ s.cover_url | urlencode }}" alt="{{ s.title }}" loading="lazy">
+        {% else %}
+            <div class="cover cover-missing">No cover</div>
+        {% endif %}
+        <div class="card-title">{{ s.title }}</div>
+        <div class="card-meta">{{ s.total_count }} chapters</div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty">No series yet — paste a URL above to start tracking one.</p>
+{% endif %}
+
+{% endblock %}

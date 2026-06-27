@@ -21,13 +21,19 @@ SQLite file for storage, and plain HTML pages.
 
 ## What it does
 
-- **Add a series** by pasting its AsuraScans URL.
-- **Library view** showing every series you track, with a **NEW** badge when
-  there are unread new chapters.
-- **Read chapters in the browser** — pages are shown top to bottom.
-- **Check for new chapters** with one button; anything that appeared since you
-  added it gets flagged **NEW**.
-- Opening a chapter marks it **read**.
+- **Add a series** by pasting its URL (AsuraScans, Flame Comics, MangaDex, or
+  MangaKatana).
+- **Library view** showing every series you track, with a **NEW** badge, unread
+  counts, a "▶ Continue" shortcut, filters (All / Has new), sorting
+  (A–Z / Recently updated), and a **Refresh all** button.
+- **Read chapters in the browser** — pages shown top to bottom, with:
+  - **Prev / Next chapter** buttons and **←/→ keyboard** shortcuts
+  - **Auto-advance** to the next chapter when you scroll to the bottom
+  - a **Display** menu (page width, dim/brightness, page gaps) saved in your
+    browser
+- **Continue reading** jumps you to the first unread chapter of a series.
+- **Check for new chapters** (one series or all at once); new ones are flagged
+  **NEW**. Opening a chapter marks it **read**.
 
 ---
 

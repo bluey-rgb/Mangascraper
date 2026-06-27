@@ -105,25 +105,41 @@ def logout(request: Request):
 # Pages
 # ---------------------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
-def library(request: Request):
-    """Home page: every series you track, with a NEW badge when unread new
-    chapters exist."""
+def library(request: Request, filter: str = "all", sort: str = "title"):
+    """Home page: every series you track, with NEW badges and unread counts.
+
+    Query params:
+      filter = "all" | "new"        (new = only series with unread new chapters)
+      sort   = "title" | "updated"  (updated = most recently added chapter first)
+    """
+    order_by = "latest_added DESC" if sort == "updated" else "title COLLATE NOCASE"
+    where = "WHERE new_count > 0" if filter == "new" else ""
+
     conn = get_connection()
     series = conn.execute(
-        """
-        SELECT s.*,
-               (SELECT COUNT(*) FROM chapters c
-                 WHERE c.series_id = s.id AND c.is_new = 1 AND c.is_read = 0)
-                 AS new_count,
-               (SELECT COUNT(*) FROM chapters c WHERE c.series_id = s.id)
-                 AS total_count
-          FROM series s
-         ORDER BY s.title COLLATE NOCASE
+        f"""
+        SELECT * FROM (
+            SELECT s.*,
+                   (SELECT COUNT(*) FROM chapters c
+                     WHERE c.series_id = s.id AND c.is_new = 1 AND c.is_read = 0)
+                     AS new_count,
+                   (SELECT COUNT(*) FROM chapters c
+                     WHERE c.series_id = s.id AND c.is_read = 0)
+                     AS unread_count,
+                   (SELECT COUNT(*) FROM chapters c WHERE c.series_id = s.id)
+                     AS total_count,
+                   (SELECT MAX(c.added_at) FROM chapters c WHERE c.series_id = s.id)
+                     AS latest_added
+              FROM series s
+        )
+        {where}
+        ORDER BY {order_by}
         """
     ).fetchall()
     conn.close()
     return templates.TemplateResponse(
-        "index.html", {"request": request, "series": series}
+        "index.html",
+        {"request": request, "series": series, "filter": filter, "sort": sort},
     )
 
 
@@ -170,6 +186,21 @@ def read_chapter(request: Request, chapter_id: int):
     scraper = get_scraper_by_name(series["source"])
     pages = scraper.get_chapter_pages(chapter["url"])
 
+    # Find the neighboring chapters in reading order (ascending by number) so the
+    # reader can offer Prev/Next. "Next" advances the story (higher number).
+    ordered = conn.execute(
+        """
+        SELECT id, title FROM chapters
+         WHERE series_id = ?
+         ORDER BY CAST(number AS REAL) ASC, id ASC
+        """,
+        (chapter["series_id"],),
+    ).fetchall()
+    ids = [row["id"] for row in ordered]
+    pos = ids.index(chapter_id)
+    prev_chapter = ordered[pos - 1] if pos > 0 else None
+    next_chapter = ordered[pos + 1] if pos < len(ordered) - 1 else None
+
     # Mark as read.
     conn.execute(
         "UPDATE chapters SET is_read = 1, is_new = 0 WHERE id = ?", (chapter_id,)
@@ -184,6 +215,8 @@ def read_chapter(request: Request, chapter_id: int):
             "series": series,
             "chapter": chapter,
             "pages": pages,
+            "prev_chapter": prev_chapter,
+            "next_chapter": next_chapter,
         },
     )
 
@@ -234,6 +267,39 @@ def add_series(url: str = Form(...)):
     return RedirectResponse(url=f"/series/{series_id}", status_code=303)
 
 
+def _refresh_one(conn, series) -> int:
+    """Re-scrape one series, inserting unseen chapters flagged NEW.
+
+    Returns how many new chapters were added. Shared by the single-series and
+    refresh-all routes. Does not commit — the caller does.
+    """
+    scraper = get_scraper_by_name(series["source"])
+    info = scraper.get_series(series["source_url"])
+
+    known_urls = {
+        r["url"]
+        for r in conn.execute(
+            "SELECT url FROM chapters WHERE series_id = ?", (series["id"],)
+        ).fetchall()
+    }
+    added = 0
+    for ch in info.chapters:
+        if ch.url not in known_urls:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO chapters
+                    (series_id, number, title, url, is_new, added_at)
+                VALUES (?, ?, ?, ?, 1, ?)
+                """,
+                (series["id"], ch.number, ch.title, ch.url, _now()),
+            )
+            added += 1
+    conn.execute(
+        "UPDATE series SET last_checked_at = ? WHERE id = ?", (_now(), series["id"])
+    )
+    return added
+
+
 @app.post("/series/{series_id}/refresh")
 def refresh_series(series_id: int):
     """Re-scrape a series and flag any chapters we hadn't seen before as NEW."""
@@ -244,31 +310,45 @@ def refresh_series(series_id: int):
     if series is None:
         conn.close()
         raise HTTPException(status_code=404, detail="Series not found")
-
-    scraper = get_scraper_by_name(series["source"])
-    info = scraper.get_series(series["source_url"])
-
-    known_urls = {
-        r["url"]
-        for r in conn.execute(
-            "SELECT url FROM chapters WHERE series_id = ?", (series_id,)
-        ).fetchall()
-    }
-    for ch in info.chapters:
-        if ch.url not in known_urls:
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO chapters
-                    (series_id, number, title, url, is_new, added_at)
-                VALUES (?, ?, ?, ?, 1, ?)
-                """,
-                (series_id, ch.number, ch.title, ch.url, _now()),
-            )
-    conn.execute(
-        "UPDATE series SET last_checked_at = ? WHERE id = ?", (_now(), series_id)
-    )
+    _refresh_one(conn, series)
     conn.commit()
     conn.close()
+    return RedirectResponse(url=f"/series/{series_id}", status_code=303)
+
+
+@app.post("/refresh-all")
+def refresh_all():
+    """Re-scrape every tracked series. Skips ones that error so one bad site
+    doesn't stop the rest."""
+    conn = get_connection()
+    all_series = conn.execute("SELECT * FROM series").fetchall()
+    for series in all_series:
+        try:
+            _refresh_one(conn, series)
+            conn.commit()
+        except Exception:
+            conn.rollback()  # skip this series; keep going
+    conn.close()
+    return RedirectResponse(url="/?filter=new&sort=updated", status_code=303)
+
+
+@app.get("/series/{series_id}/continue")
+def continue_series(series_id: int):
+    """Jump to the first unread chapter (in reading order). If everything is
+    read, fall back to the series page."""
+    conn = get_connection()
+    row = conn.execute(
+        """
+        SELECT id FROM chapters
+         WHERE series_id = ? AND is_read = 0
+         ORDER BY CAST(number AS REAL) ASC, id ASC
+         LIMIT 1
+        """,
+        (series_id,),
+    ).fetchone()
+    conn.close()
+    if row:
+        return RedirectResponse(url=f"/read/{row['id']}", status_code=303)
     return RedirectResponse(url=f"/series/{series_id}", status_code=303)
 
 

@@ -122,4 +122,59 @@ button.danger { background: var(--danger); }
     padding: 12px 0;
 }
 .reader { display: flex; flex-direction: column; align-items: center; }
-.reader img { width: 100%; max-width: 800px; display: block; }
+.reader img { width: 100%; max-width: var(--page-width, 800px); display: block; }
+.reader.with-gap img { margin-bottom: 14px; }
+
+/* Chapter navigation bars */
+.reader-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 10px 0; flex-wrap: wrap;
+}
+.nav-btn {
+    padding: 9px 16px; border-radius: 8px; background: var(--panel-2);
+    color: var(--text); font-weight: 600; font-size: 0.9rem; white-space: nowrap;
+}
+.nav-btn:hover { filter: brightness(1.15); }
+.nav-btn.primary { background: var(--accent); color: #fff; }
+.nav-btn.disabled { opacity: 0.35; cursor: default; }
+
+/* Reader display settings */
+.reader-settings { position: relative; }
+.reader-settings summary {
+    list-style: none; cursor: pointer; padding: 9px 16px;
+    background: var(--panel-2); border-radius: 8px; font-size: 0.9rem;
+    font-weight: 600; user-select: none;
+}
+.reader-settings summary::-webkit-details-marker { display: none; }
+.settings-panel {
+    position: absolute; left: 50%; transform: translateX(-50%); top: 110%;
+    z-index: 20; background: var(--panel); border: 1px solid #353945;
+    border-radius: 10px; padding: 14px; width: 230px;
+    display: flex; flex-direction: column; gap: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.settings-panel label { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.settings-panel .check-label { flex-direction: row; align-items: center; gap: 8px; }
+.settings-panel select, .settings-panel input[type=range] { width: 100%; }
+.settings-panel select { padding: 6px; border-radius: 6px; background: var(--panel-2); color: var(--text); border: 1px solid #353945; }
+
+/* Library controls */
+.library-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+.library-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.toggle-group { display: flex; background: var(--panel-2); border-radius: 8px; overflow: hidden; }
+.toggle { padding: 8px 13px; font-size: 0.82rem; color: var(--muted); }
+.toggle.active { background: var(--accent); color: #fff; font-weight: 600; }
+.toggle:hover:not(.active) { color: var(--text); }
+
+/* Library card footer */
+.card-foot { display: flex; align-items: center; justify-content: space-between; padding: 0 12px 12px; }
+.continue { color: var(--accent); font-size: 0.82rem; font-weight: 600; }
+.continue:hover { filter: brightness(1.2); }
+
+/* Link styled as a button (e.g. Continue reading) */
+.btn-link {
+    display: inline-block; padding: 11px 18px; border-radius: 8px;
+    font-weight: 600; background: var(--panel-2); color: var(--text);
+}
+.btn-link.primary { background: var(--accent); color: #fff; }
+.btn-link:hover { filter: brightness(1.1); }

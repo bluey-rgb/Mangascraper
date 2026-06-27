@@ -15,6 +15,7 @@
             {% if series.last_checked_at %}last checked {{ series.last_checked_at }}{% else %}never refreshed{% endif %}
         </p>
         <div class="series-actions">
+            <a class="btn-link primary" href="/series/{{ series.id }}/continue">▶ Continue reading</a>
             <form action="/series/{{ series.id }}/refresh" method="post">
                 <button type="submit">🔄 Check for new chapters</button>
             </form>

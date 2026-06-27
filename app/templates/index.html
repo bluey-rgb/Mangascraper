@@ -12,25 +12,52 @@
     <p class="muted supported">Supported: AsuraScans · Flame Comics · MangaDex · MangaKatana</p>
 </section>
 
-<h2>Your library</h2>
+<div class="library-bar">
+    <h2>Your library</h2>
+    <div class="library-controls">
+        <div class="toggle-group">
+            <a class="toggle {% if filter != 'new' %}active{% endif %}" href="/?filter=all&sort={{ sort }}">All</a>
+            <a class="toggle {% if filter == 'new' %}active{% endif %}" href="/?filter=new&sort={{ sort }}">Has new</a>
+        </div>
+        <div class="toggle-group">
+            <a class="toggle {% if sort != 'updated' %}active{% endif %}" href="/?filter={{ filter }}&sort=title">A–Z</a>
+            <a class="toggle {% if sort == 'updated' %}active{% endif %}" href="/?filter={{ filter }}&sort=updated">Recently updated</a>
+        </div>
+        <form action="/refresh-all" method="post">
+            <button type="submit">🔄 Refresh all</button>
+        </form>
+    </div>
+</div>
 
 {% if series %}
 <div class="grid">
     {% for s in series %}
-    <a class="card" href="/series/{{ s.id }}">
+    <div class="card">
         {% if s.new_count > 0 %}<span class="badge">{{ s.new_count }} NEW</span>{% endif %}
-        {% if s.cover_url %}
-            <img class="cover" src="/img?url={{ s.cover_url | urlencode }}" alt="{{ s.title }}" loading="lazy">
-        {% else %}
-            <div class="cover cover-missing">No cover</div>
-        {% endif %}
-        <div class="card-title">{{ s.title }}</div>
-        <div class="card-meta">{{ s.total_count }} chapters</div>
-    </a>
+        <a href="/series/{{ s.id }}">
+            {% if s.cover_url %}
+                <img class="cover" src="/img?url={{ s.cover_url | urlencode }}" alt="{{ s.title }}" loading="lazy">
+            {% else %}
+                <div class="cover cover-missing">No cover</div>
+            {% endif %}
+            <div class="card-title">{{ s.title }}</div>
+        </a>
+        <div class="card-foot">
+            <span class="card-meta">
+                {% if s.unread_count > 0 %}{{ s.unread_count }} unread{% else %}all read{% endif %}
+            </span>
+            {% if s.unread_count > 0 %}
+            <a class="continue" href="/series/{{ s.id }}/continue">▶ Continue</a>
+            {% endif %}
+        </div>
+    </div>
     {% endfor %}
 </div>
 {% else %}
-<p class="empty">No series yet — paste a URL above to start tracking one.</p>
+<p class="empty">
+    {% if filter == 'new' %}No series have new chapters right now.
+    {% else %}No series yet — paste a URL above to start tracking one.{% endif %}
+</p>
 {% endif %}
 
 {% endblock %}

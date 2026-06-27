@@ -2,13 +2,43 @@
 {% block title %}{{ series.title }} — {{ chapter.title }}{% endblock %}
 {% block content %}
 
+{% set prev_url = "/read/" ~ prev_chapter.id if prev_chapter else "" %}
+{% set next_url = "/read/" ~ next_chapter.id if next_chapter else "" %}
+
 <div class="reader-bar">
     <a href="/series/{{ series.id }}" class="back">← {{ series.title }}</a>
     <span class="muted">{{ chapter.title }} · {{ pages | length }} pages</span>
 </div>
 
+<div class="reader-nav top">
+    {% if prev_chapter %}<a class="nav-btn" href="{{ prev_url }}">← Prev</a>
+    {% else %}<span class="nav-btn disabled">← Prev</span>{% endif %}
+
+    <details class="reader-settings">
+        <summary>⚙ Display</summary>
+        <div class="settings-panel">
+            <label>Width
+                <select id="set-width">
+                    <option value="fit">Fit</option>
+                    <option value="narrow">Narrow</option>
+                    <option value="wide">Wide</option>
+                    <option value="full">Full</option>
+                </select>
+            </label>
+            <label>Dim
+                <input type="range" id="set-dim" min="40" max="100" value="100">
+            </label>
+            <label class="check-label"><input type="checkbox" id="set-gap"> Gap between pages</label>
+            <label class="check-label"><input type="checkbox" id="set-autoadvance" checked> Auto-advance to next chapter</label>
+        </div>
+    </details>
+
+    {% if next_chapter %}<a class="nav-btn" href="{{ next_url }}">Next →</a>
+    {% else %}<span class="nav-btn disabled">Next →</span>{% endif %}
+</div>
+
 {% if pages %}
-<div class="reader">
+<div class="reader" id="reader" data-next-url="{{ next_url }}">
     {% for page in pages %}
     <img src="/img?url={{ page | urlencode }}" alt="page {{ loop.index }}" loading="lazy">
     {% endfor %}
@@ -17,8 +47,13 @@
 <p class="empty">No pages found for this chapter. The site layout may have changed.</p>
 {% endif %}
 
-<div class="reader-bar">
-    <a href="/series/{{ series.id }}" class="back">← Back to chapter list</a>
+<div class="reader-nav bottom">
+    {% if prev_chapter %}<a class="nav-btn" href="{{ prev_url }}">← Prev</a>
+    {% else %}<span class="nav-btn disabled">← Prev</span>{% endif %}
+    <a href="/series/{{ series.id }}" class="back">Chapter list</a>
+    {% if next_chapter %}<a class="nav-btn primary" href="{{ next_url }}">Next chapter →</a>
+    {% else %}<span class="nav-btn disabled">Next →</span>{% endif %}
 </div>
 
+<script src="/static/reader.js?v=2"></script>
 {% endblock %}

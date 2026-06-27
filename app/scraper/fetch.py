@@ -34,13 +34,23 @@ def _respect_delay() -> None:
     _last_request_time = time.time()
 
 
-def get(url: str, referer: str = "https://asurascans.com/", params: dict = None) -> requests.Response:
+def get(
+    url: str,
+    referer: str = "https://asurascans.com/",
+    params: dict = None,
+    polite: bool = True,
+) -> requests.Response:
     """Fetch a URL as if we were Chrome. Raises on HTTP errors.
 
     `params` is an optional dict of query-string parameters (used by API calls
     such as MangaDex's).
+
+    `polite` adds the between-request delay. It's on for scraping a site's pages
+    (be a good citizen), but off for the image proxy — those are CDN images the
+    user is actively viewing, and throttling them makes reading crawl.
     """
-    _respect_delay()
+    if polite:
+        _respect_delay()
     headers = {
         "User-Agent": USER_AGENT,
         "Referer": referer,
@@ -58,5 +68,5 @@ def get(url: str, referer: str = "https://asurascans.com/", params: dict = None)
 
 
 def get_bytes(url: str, referer: str = "https://asurascans.com/") -> bytes:
-    """Fetch raw bytes (used by the image proxy)."""
-    return get(url, referer=referer).content
+    """Fetch raw bytes (used by the image proxy). Not throttled — see `polite`."""
+    return get(url, referer=referer, polite=False).content
